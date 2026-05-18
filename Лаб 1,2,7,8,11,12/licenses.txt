@@ -1,0 +1,6 @@
+├─ MIT: 38
+├─ ISC: 2
+├─ UNLICENSED: 1
+├─ BSD-3-Clause: 1
+├─ 0BSD: 1
+└─ (MIT OR CC0-1.0): 1
