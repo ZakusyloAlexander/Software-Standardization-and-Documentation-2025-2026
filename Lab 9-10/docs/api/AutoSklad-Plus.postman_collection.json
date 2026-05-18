@@ -1,0 +1,275 @@
+{
+  "info": {
+    "_postman_id": "autosklad-plus-lab9-10",
+    "name": "АвтоСклад Плюс — автозапчастини (Lab 9-10)",
+    "description": "Колекція для тестування **реальних** HTTP-ендпоінтів PHP-магазину автозапчастин.\n\nВідповіді — HTML або редірект 302. Після Login збережіть cookie PHPSESSID.\n\nДемо: admin@gmail.com / 123, client@gmail.com / 123",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://autoparts-store.local",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "6",
+      "type": "string"
+    },
+    {
+      "key": "categoryId",
+      "value": "2",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Ping PHP",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/ping.php"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Catalog — каталог запчастин",
+      "item": [
+        {
+          "name": "Головна (нові надходження)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/index.php"
+          },
+          "response": []
+        },
+        {
+          "name": "Категорія — Гальмівна система",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/category.php?id={{categoryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["category.php"],
+              "query": [{"key": "id", "value": "{{categoryId}}"}]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Товар — Колодки Brembo",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/product.php?id={{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["product.php"],
+              "query": [{"key": "id", "value": "{{productId}}"}]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Пошук (не реалізовано на сервері)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/index.php?q=форсунка",
+              "host": ["{{baseUrl}}"],
+              "path": ["index.php"],
+              "query": [{"key": "q", "value": "форсунка"}]
+            },
+            "description": "Повертає звичайну головну без фільтрації — для демонстрації обмеження."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login — клієнт",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 302', function () {",
+                  "  pm.expect([200, 302]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {"key": "email", "value": "client@gmail.com", "type": "text"},
+                {"key": "password", "value": "123", "type": "text"}
+              ]
+            },
+            "url": "{{baseUrl}}/login.php",
+            "description": "Postman збереже PHPSESSID у cookie jar для наступних запитів."
+          },
+          "response": []
+        },
+        {
+          "name": "Login — адміністратор",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {"key": "email", "value": "admin@gmail.com", "type": "text"},
+                {"key": "password", "value": "123", "type": "text"}
+              ]
+            },
+            "url": "{{baseUrl}}/login.php"
+          },
+          "response": []
+        },
+        {
+          "name": "Register — новий користувач",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {"key": "name", "value": "Тест Postman", "type": "text"},
+                {"key": "email", "value": "postman.test@example.com", "type": "text"},
+                {"key": "password", "value": "123", "type": "text"}
+              ]
+            },
+            "url": "{{baseUrl}}/register.php"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/logout.php"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cart — кошик",
+      "item": [
+        {
+          "name": "Додати в кошик (колодки id=6)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {"key": "add_to_cart", "value": "1", "type": "text"},
+                {"key": "product_id", "value": "6", "type": "text"},
+                {"key": "quantity", "value": "1", "type": "text"}
+              ]
+            },
+            "url": "{{baseUrl}}/cart.php",
+            "description": "Спочатку виконайте Login — клієнт."
+          },
+          "response": []
+        },
+        {
+          "name": "Перегляд кошика",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/cart.php"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Orders — замовлення",
+      "item": [
+        {
+          "name": "Checkout GET",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/checkout.php"
+          },
+          "response": []
+        },
+        {
+          "name": "Checkout POST — підтвердити",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {"key": "shipping_address", "value": "м. Київ, вул. Тестова, 1", "type": "text"},
+                {"key": "phone", "value": "+380501234567", "type": "text"},
+                {"key": "notes", "value": "Дзвінок перед доставкою", "type": "text"}
+              ]
+            },
+            "url": "{{baseUrl}}/checkout.php"
+          },
+          "response": []
+        },
+        {
+          "name": "Profile — мої замовлення",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/profile.php"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin — панель",
+      "item": [
+        {
+          "name": "Admin panel GET",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin.php",
+            "description": "Потрібен Login — admin@gmail.com"
+          },
+          "response": []
+        },
+        {
+          "name": "Додати товар (тест)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/x-www-form-urlencoded"}],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {"key": "add_product", "value": "1", "type": "text"},
+                {"key": "name", "value": "Тестова запчастина Postman", "type": "text"},
+                {"key": "short_description", "value": "Демо позиція", "type": "text"},
+                {"key": "description", "value": "Повний опис тестового товару", "type": "text"},
+                {"key": "price", "value": "99.99", "type": "text"},
+                {"key": "stock", "value": "5", "type": "text"},
+                {"key": "image", "value": "ap_brake_01.jpg", "type": "text"},
+                {"key": "category_id", "value": "2", "type": "text"}
+              ]
+            },
+            "url": "{{baseUrl}}/admin.php"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

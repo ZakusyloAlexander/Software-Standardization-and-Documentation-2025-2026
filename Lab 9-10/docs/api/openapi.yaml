@@ -1,0 +1,466 @@
+openapi: 3.0.3
+info:
+  title: АвтоСклад Плюс — HTTP-інтерфейс веб-додатку
+  description: |
+    Документація **фактичних** HTTP-ендпоінтів PHP-магазину автозапчастин (Lab 9-10).
+
+    Система не надає окремого REST JSON API. Ендпоінти повертають HTML (text/html)
+    або виконують редірект 302. Авторизація — PHP-сесія (cookie `PHPSESSID`).
+
+    Предметна область: категорії запчастин, товари (`products`), кошик (`cart`), замовлення (`orders`).
+  version: 1.0.0
+  contact:
+    email: zapytannya@autosklad-plus.ua
+  license:
+    name: Навчальний проєкт
+
+servers:
+  - url: http://autoparts-store.local
+    description: OpenServer (project.ini)
+  - url: http://localhost
+    description: Локальний Apache
+
+tags:
+  - name: System
+    description: Перевірка середовища
+  - name: Catalog
+    description: Каталог автозапчастин (публічний)
+  - name: Auth
+    description: Реєстрація та вхід
+  - name: Cart
+    description: Кошик (потрібна сесія користувача)
+  - name: Orders
+    description: Оформлення замовлення
+  - name: Profile
+    description: Профіль покупця
+  - name: Admin
+    description: Панель адміністратора (role=admin)
+
+paths:
+  /ping.php:
+    get:
+      tags: [System]
+      summary: Перевірка роботи PHP
+      operationId: ping
+      responses:
+        '200':
+          description: Текстовий статус
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  OK: PHP працює.
+                  Каталог файлу: C:\...\Lab 9-10
+
+  /index.php:
+    get:
+      tags: [Catalog]
+      summary: Головна сторінка магазину
+      description: Hero, категорії запчастин, 8 останніх товарів (created_at DESC).
+      operationId: getHomePage
+      parameters:
+        - name: q
+          in: query
+          description: Пошук (форма в header) — **не обробляється в index.php**
+          required: false
+          schema:
+            type: string
+          example: форсунка
+      responses:
+        '200':
+          description: HTML головної сторінки
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /category.php:
+    get:
+      tags: [Catalog]
+      summary: Товари категорії запчастин
+      operationId: getCategoryProducts
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: ID категорії (1–6)
+          schema:
+            type: integer
+            minimum: 1
+          example: 2
+      responses:
+        '200':
+          description: HTML списку товарів категорії
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /product.php:
+    get:
+      tags: [Catalog]
+      summary: Картка товару (запчастина)
+      operationId: getProduct
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+          example: 6
+      responses:
+        '200':
+          description: HTML картки товару
+          content:
+            text/html:
+              schema:
+                type: string
+        '302':
+          description: Редірект на index.php якщо товар не знайдено
+
+  /login.php:
+    get:
+      tags: [Auth]
+      summary: Форма входу
+      operationId: getLoginForm
+      responses:
+        '200':
+          description: HTML форми
+          content:
+            text/html:
+              schema:
+                type: string
+        '302':
+          description: Вже авторизований → index.php
+    post:
+      tags: [Auth]
+      summary: Вхід користувача
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: client@gmail.com
+                password:
+                  type: string
+                  example: "123"
+      responses:
+        '302':
+          description: Успіх → index.php, встановлюється PHPSESSID
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: PHPSESSID=abc123; path=/
+        '200':
+          description: Помилка — HTML з текстом «Неправильний email або пароль»
+
+  /register.php:
+    get:
+      tags: [Auth]
+      summary: Форма реєстрації
+      operationId: getRegisterForm
+      responses:
+        '200':
+          description: HTML форми
+    post:
+      tags: [Auth]
+      summary: Реєстрація нового покупця
+      operationId: register
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: Іван Коваль
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '302':
+          description: Успіх → login.php
+        '200':
+          description: Email зайнятий — повідомлення про помилку
+
+  /logout.php:
+    get:
+      tags: [Auth]
+      summary: Вихід (знищення сесії)
+      operationId: logout
+      security:
+        - phpSession: []
+      responses:
+        '302':
+          description: Редірект на index.php
+
+  /cart.php:
+    get:
+      tags: [Cart]
+      summary: Перегляд кошика
+      operationId: getCart
+      security:
+        - phpSession: []
+      parameters:
+        - name: remove
+          in: query
+          description: ID рядка cart.id для видалення
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: HTML кошика
+        '302':
+          description: Не авторизований → login.php
+    post:
+      tags: [Cart]
+      summary: Додати товар або оновити кількість
+      operationId: mutateCart
+      security:
+        - phpSession: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              oneOf:
+                - type: object
+                  required: [add_to_cart, product_id, quantity]
+                  properties:
+                    add_to_cart:
+                      type: string
+                      example: "1"
+                    product_id:
+                      type: integer
+                      example: 6
+                    quantity:
+                      type: integer
+                      minimum: 1
+                      example: 2
+                - type: object
+                  required: [update_quantity, cart_id, quantity]
+                  properties:
+                    update_quantity:
+                      type: string
+                      example: "1"
+                    cart_id:
+                      type: integer
+                    quantity:
+                      type: integer
+      responses:
+        '302':
+          description: Редірект на cart.php після зміни
+
+  /checkout.php:
+    get:
+      tags: [Orders]
+      summary: Сторінка оформлення замовлення
+      operationId: getCheckout
+      security:
+        - phpSession: []
+      responses:
+        '200':
+          description: HTML зі складом замовлення
+        '302':
+          description: Порожній кошик або не авторизований
+    post:
+      tags: [Orders]
+      summary: Підтвердити замовлення запчастин
+      operationId: placeOrder
+      security:
+        - phpSession: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [shipping_address]
+              properties:
+                shipping_address:
+                  type: string
+                  example: м. Київ, вул. Хрещатик, 10
+                phone:
+                  type: string
+                  description: Відображається у формі, **не зберігається в БД**
+                notes:
+                  type: string
+                  description: **Не зберігається в БД**
+      responses:
+        '200':
+          description: HTML повідомлення про успіх з order_id
+        '302':
+          description: GET без товарів у кошику
+
+  /profile.php:
+    get:
+      tags: [Profile]
+      summary: Профіль та історія замовлень
+      operationId: getProfile
+      security:
+        - phpSession: []
+      responses:
+        '200':
+          description: HTML з таблицею orders
+        '302':
+          description: Не авторизований
+
+  /admin.php:
+    get:
+      tags: [Admin]
+      summary: Панель адміністратора
+      operationId: getAdminPanel
+      security:
+        - phpSession: []
+      parameters:
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum: [delete_product, delete_user, change_role]
+        - name: id
+          in: query
+          schema:
+            type: integer
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [admin, user]
+        - name: edit_product
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: HTML адмін-панелі
+        '302':
+          description: Не admin → index.php
+    post:
+      tags: [Admin]
+      summary: Додати/оновити товар або статус замовлення
+      operationId: adminPost
+      security:
+        - phpSession: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/AddProduct'
+                - $ref: '#/components/schemas/UpdateProduct'
+                - type: object
+                  properties:
+                    status:
+                      type: string
+                      enum: [Нове, "В обробці", Відправлено, Виконано, Скасовано]
+      responses:
+        '302':
+          description: Редірект на admin.php
+
+components:
+  securitySchemes:
+    phpSession:
+      type: apiKey
+      in: cookie
+      name: PHPSESSID
+      description: Сесія PHP після успішного login.php
+
+  schemas:
+    Category:
+      type: object
+      description: Категорія автозапчастин (таблиця categories)
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+          example: Гальмівна система
+
+    Product:
+      type: object
+      description: Запчастина (таблиця products)
+      properties:
+        id:
+          type: integer
+        category_id:
+          type: integer
+        name:
+          type: string
+          example: Колодки передні Brembo
+        short_description:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+          example: 3200.00
+        image:
+          type: string
+          example: ap_brake_01.jpg
+        stock:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        total:
+          type: number
+        status:
+          type: string
+        shipping_address:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    AddProduct:
+      type: object
+      required: [add_product, name, price, category_id]
+      properties:
+        add_product:
+          type: string
+        name:
+          type: string
+        short_description:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        stock:
+          type: integer
+        image:
+          type: string
+        category_id:
+          type: integer
+
+    UpdateProduct:
+      allOf:
+        - $ref: '#/components/schemas/AddProduct'
+        - type: object
+          required: [update_product, product_id]
+          properties:
+            update_product:
+              type: string
+            product_id:
+              type: integer
