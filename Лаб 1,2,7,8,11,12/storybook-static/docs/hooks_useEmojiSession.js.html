@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>hooks/useEmojiSession.js - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-constants_storageKeys.html">constants/storageKeys</a><ul class='methods'><li data-type='method'><a href="module-constants_storageKeys.html#.readStorageWithMigration">readStorageWithMigration</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#CookieConsent">CookieConsent</a></li><li><a href="global.html#Footer">Footer</a></li><li><a href="global.html#GameBoard">GameBoard</a></li><li><a href="global.html#Modal">Modal</a></li><li><a href="global.html#ResultsModal">ResultsModal</a></li><li><a href="global.html#SettingsForm">SettingsForm</a></li><li><a href="global.html#StatsPanel">StatsPanel</a></li><li><a href="global.html#useEmojiSession">useEmojiSession</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">hooks/useEmojiSession.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { emojiPool } from "../state/constants.js";
+
+const createDeck = (pairs) => {
+  const shuffledPool = [...emojiPool].sort(() => Math.random() - 0.5);
+  const picked = shuffledPool.slice(0, pairs);
+  const duplicated = picked.flatMap((emoji, idx) => [
+    { id: `a-${idx}`, emoji },
+    { id: `b-${idx}`, emoji },
+  ]);
+  return duplicated.sort(() => Math.random() - 0.5);
+};
+
+const formatDuration = (ms) => {
+  if (!ms) return "00:00";
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+};
+
+/**
+ * Manages card deck, flips, matches, timer, and win stats for one game round.
+ * @param {{ pairs: number, flipDelay: number }} settings - Active game settings.
+ * @returns {Object} Session state and handlers for the game board.
+ */
+export const useEmojiSession = (settings) => {
+  const [deck, setDeck] = useState(() => createDeck(settings.pairs));
+  const [flipped, setFlipped] = useState([]);
+  const [matched, setMatched] = useState([]);
+  const [moves, setMoves] = useState(0);
+  const [matches, setMatches] = useState(0);
+  const [sessionKey, setSessionKey] = useState(0);
+  const [startedAt, setStartedAt] = useState(null);
+  const [finishedAt, setFinishedAt] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+
+  useEffect(() => {
+    setDeck(createDeck(settings.pairs));
+    setFlipped([]);
+    setMatched([]);
+    setMoves(0);
+    setMatches(0);
+    setStartedAt(null);
+    setFinishedAt(null);
+    setIsLocked(false);
+  }, [settings, sessionKey]);
+
+  const timer = useRef(null);
+  const [elapsed, setElapsed] = useState("00:00");
+
+  useEffect(() => {
+    if (!startedAt || finishedAt) return;
+    timer.current = window.setInterval(() => {
+      setElapsed(formatDuration(Date.now() - startedAt));
+    }, 500);
+    return () => window.clearInterval(timer.current);
+  }, [startedAt, finishedAt]);
+
+  useEffect(() => {
+    if (!startedAt) setElapsed("00:00");
+    if (finishedAt) {
+      setElapsed(formatDuration(finishedAt - startedAt));
+      window.clearInterval(timer.current);
+    }
+  }, [startedAt, finishedAt]);
+
+  const cardsById = useMemo(() => {
+    const map = new Map();
+    deck.forEach((card) => map.set(card.id, card));
+    return map;
+  }, [deck]);
+
+  const handleCardFlip = useCallback(
+    (cardId) => {
+      if (isLocked) return;
+      if (flipped.includes(cardId)) return;
+      if (matched.includes(cardId)) return;
+
+      const nextFlipped = [...flipped, cardId];
+      setFlipped(nextFlipped);
+      if (!startedAt) setStartedAt(Date.now());
+
+      if (nextFlipped.length &lt; 2) {
+        return;
+      }
+
+      setIsLocked(true);
+      setMoves((prev) => prev + 1);
+
+      const [firstId, secondId] = nextFlipped;
+      const firstCard = cardsById.get(firstId);
+      const secondCard = cardsById.get(secondId);
+      const isMatch = firstCard?.emoji === secondCard?.emoji;
+
+      window.setTimeout(() => {
+        if (isMatch) {
+          setMatched((prev) => [...prev, firstId, secondId]);
+          setMatches((prev) => prev + 1);
+        }
+
+        setFlipped([]);
+        setIsLocked(false);
+      }, isMatch ? 200 : settings.flipDelay);
+    },
+    [cardsById, flipped, isLocked, matched, settings.flipDelay, startedAt],
+  );
+
+  const totalCards = deck.length;
+  const hasWon = matched.length === totalCards &amp;&amp; totalCards > 0;
+
+  useEffect(() => {
+    if (hasWon &amp;&amp; !finishedAt) {
+      setFinishedAt(Date.now());
+    }
+  }, [hasWon, finishedAt]);
+
+  const restart = () => {
+    setSessionKey((prev) => prev + 1);
+  };
+
+  const accuracy = moves ? Math.round((matches / moves) * 100) : 0;
+  const lastDuration = finishedAt &amp;&amp; startedAt ? finishedAt - startedAt : null;
+
+  const cards = deck.map((card) => ({
+    ...card,
+    isFlipped: flipped.includes(card.id) || matched.includes(card.id),
+    isMatched: matched.includes(card.id),
+  }));
+
+  return {
+    cards,
+    moves,
+    matches,
+    accuracy,
+    elapsed,
+    isLocked,
+    hasWon,
+    stats: hasWon
+      ? {
+          moves,
+          accuracy,
+          elapsed: formatDuration(lastDuration),
+        }
+      : null,
+    handleCardFlip,
+    restart,
+  };
+};
+
+
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Tue May 19 2026 00:31:00 GMT+0300 (Восточная Европа, летнее время) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
