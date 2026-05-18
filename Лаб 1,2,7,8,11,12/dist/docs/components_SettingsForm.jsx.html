@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>components/SettingsForm.jsx - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-constants_storageKeys.html">constants/storageKeys</a><ul class='methods'><li data-type='method'><a href="module-constants_storageKeys.html#.readStorageWithMigration">readStorageWithMigration</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#CookieConsent">CookieConsent</a></li><li><a href="global.html#Footer">Footer</a></li><li><a href="global.html#GameBoard">GameBoard</a></li><li><a href="global.html#Modal">Modal</a></li><li><a href="global.html#ResultsModal">ResultsModal</a></li><li><a href="global.html#SettingsForm">SettingsForm</a></li><li><a href="global.html#StatsPanel">StatsPanel</a></li><li><a href="global.html#useEmojiSession">useEmojiSession</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">components/SettingsForm.jsx</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import { difficultyPresets } from "../state/constants.js";
+
+/** @typedef {{ difficulty: string, pairs: number, flipDelay: number }} GameSettings */
+
+const schema = yup.object({
+  difficulty: yup.string().oneOf(Object.keys(difficultyPresets)).required(),
+  pairs: yup.number().min(4).max(18).required(),
+  flipDelay: yup.number().min(300).max(1500).required(),
+});
+
+/**
+ * Form for game difficulty, pair count, and flip delay with Yup validation.
+ * @param {Object} props
+ * @param {GameSettings} props.initialValues - Starting form values from Redux.
+ * @param {Function} [props.onSubmit] - Called with validated settings.
+ * @returns {JSX.Element}
+ */
+export const SettingsForm = ({ initialValues, onSubmit }) => {
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: initialValues,
+  });
+
+  useEffect(() => {
+    reset(initialValues);
+  }, [initialValues, reset]);
+
+  const handleDifficultyChange = (difficulty) => {
+    const presetPairs = difficultyPresets[difficulty].pairs;
+    setValue("difficulty", difficulty);
+    setValue("pairs", presetPairs);
+  };
+
+  const wrappedSubmit = handleSubmit((values) => {
+    onSubmit?.(values);
+  });
+
+  return (
+    &lt;form className="settings-form" onSubmit={wrappedSubmit}>
+      &lt;div className="form-row">
+        &lt;label>Рівень складності&lt;/label>
+        &lt;div className="difficulty-group">
+          {Object.entries(difficultyPresets).map(([key, preset]) => (
+            &lt;button
+              key={key}
+              type="button"
+              className={`difficulty-option${watch("difficulty") === key ? " is-active" : ""}`}
+              onClick={() => handleDifficultyChange(key)}
+            >
+              &lt;strong>{preset.label}&lt;/strong>
+              &lt;p>{preset.pairs * 2} карток&lt;/p>
+            &lt;/button>
+          ))}
+        &lt;/div>
+        {errors.difficulty &amp;&amp; &lt;span className="error">{errors.difficulty.message}&lt;/span>}
+      &lt;/div>
+
+      &lt;div className="form-row">
+        &lt;label htmlFor="pairs">Кількість пар: {watch("pairs")}&lt;/label>
+        &lt;input type="range" id="pairs" min="4" max="18" step="1" {...register("pairs", { valueAsNumber: true })} />
+        {errors.pairs &amp;&amp; &lt;span className="error">{errors.pairs.message}&lt;/span>}
+      &lt;/div>
+
+      &lt;div className="form-row">
+        &lt;label htmlFor="flipDelay">Швидкість приховування (мс): {watch("flipDelay")} &lt;/label>
+        &lt;input type="range" id="flipDelay" min="300" max="1500" step="50" {...register("flipDelay", { valueAsNumber: true })} />
+        {errors.flipDelay &amp;&amp; &lt;span className="error">{errors.flipDelay.message}&lt;/span>}
+      &lt;/div>
+
+      &lt;button className="btn-primary" type="submit" disabled={isSubmitting}>
+        Зберегти та грати
+      &lt;/button>
+    &lt;/form>
+  );
+};
+
+
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Tue May 19 2026 00:31:00 GMT+0300 (Восточная Европа, летнее время) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>components/GameBoard.jsx - Documentation</title>
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav >
+    
+    
+    <h2><a href="index.html">Home</a></h2><h3>Modules</h3><ul><li><a href="module-constants_storageKeys.html">constants/storageKeys</a><ul class='methods'><li data-type='method'><a href="module-constants_storageKeys.html#.readStorageWithMigration">readStorageWithMigration</a></li></ul></li></ul><h3>Global</h3><ul><li><a href="global.html#CookieConsent">CookieConsent</a></li><li><a href="global.html#Footer">Footer</a></li><li><a href="global.html#GameBoard">GameBoard</a></li><li><a href="global.html#Modal">Modal</a></li><li><a href="global.html#ResultsModal">ResultsModal</a></li><li><a href="global.html#SettingsForm">SettingsForm</a></li><li><a href="global.html#StatsPanel">StatsPanel</a></li><li><a href="global.html#useEmojiSession">useEmojiSession</a></li></ul>
+    
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">components/GameBoard.jsx</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import React, { useEffect, useRef } from "react";
+import { useDispatch } from "react-redux";
+import { useEmojiSession } from "../hooks/useEmojiSession.js";
+import { StatsPanel } from "./StatsPanel.jsx";
+import { ResultsModal } from "./ResultsModal.jsx";
+import { addResult } from "../store/resultsSlice.js";
+
+const Card = ({ card, onFlip, disabled }) => (
+  &lt;button
+    type="button"
+    className={`card${card.isFlipped ? " is-open" : ""}${card.isMatched ? " is-matched" : ""}`}
+    onClick={() => onFlip(card.id)}
+    disabled={disabled || card.isMatched}
+  >
+    {card.isFlipped ? card.emoji : "❓"}
+  &lt;/button>
+);
+
+/**
+ * Main game screen: card grid, live stats, and win modal.
+ * @param {Object} props
+ * @param {string} props.userId - Active player id.
+ * @param {{ difficulty: string, pairs: number, flipDelay: number }} props.settings - Redux game settings.
+ * @param {string} props.difficultyLabel - Human-readable difficulty name.
+ * @param {Function} [props.onExit] - Navigate back to settings.
+ * @param {Function} [props.onRoundComplete] - Called after a won round.
+ */
+export const GameBoard = ({ userId, settings, difficultyLabel, onExit, onRoundComplete }) => {
+  const dispatch = useDispatch();
+  const session = useEmojiSession(settings);
+  const gridMode = settings.pairs &lt;= 8 ? "easy" : settings.pairs &lt;= 12 ? "normal" : "hard";
+  const reportedRef = useRef(false);
+
+  useEffect(() => {
+    if (session.hasWon &amp;&amp; session.stats &amp;&amp; !reportedRef.current) {
+      dispatch(addResult({ userId, stats: session.stats }));
+      reportedRef.current = true;
+    }
+    if (!session.hasWon) {
+      reportedRef.current = false;
+    }
+  }, [session.hasWon, session.stats, dispatch, userId]);
+
+  return (
+    &lt;section className="screen game-screen">
+      &lt;header>
+        &lt;p className="screen__subtitle">Користувач: {userId}&lt;/p>
+        &lt;h1 className="screen__title">Поле гри ({difficultyLabel})&lt;/h1>
+        &lt;p>Знайди всі пари емодзі якомога швидше.&lt;/p>
+      &lt;/header>
+
+      &lt;StatsPanel
+        items={[
+          { label: "Ходи", value: session.moves },
+          { label: "Збігів", value: session.matches },
+          { label: "Час", value: session.elapsed },
+        ]}
+      />
+
+      &lt;div className={`card-grid card-grid--${gridMode}`}>
+        {session.cards.map((card) => (
+          &lt;Card key={card.id} card={card} onFlip={session.handleCardFlip} disabled={session.isLocked} />
+        ))}
+      &lt;/div>
+
+      &lt;div className="actions">
+        &lt;button className="btn-secondary" onClick={session.restart}>
+          Перезапустити
+        &lt;/button>
+        &lt;button className="btn-secondary" onClick={onExit}>
+          До налаштувань
+        &lt;/button>
+      &lt;/div>
+
+      &lt;ResultsModal
+        isOpen={session.hasWon}
+        stats={session.stats}
+        onReplay={session.restart}
+        onNext={() => onRoundComplete?.(session.stats)}
+      />
+    &lt;/section>
+  );
+};
+
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a> on Tue May 19 2026 00:31:00 GMT+0300 (Восточная Европа, летнее время) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+
+
+</body>
+</html>
